@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>logo.png</file>
+        <file>logo.svg</file>
+        <file>qmodbus.ico</file>
+    </qresource>
+</RCC>
