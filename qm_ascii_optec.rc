@@ -1,0 +1,26 @@
+lmmsicon ICON data/logo.ico
+#include <windows.h>
+
+VS_VERSION_INFO	VERSIONINFO
+  FILEVERSION	0,0,1,0
+  FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+  FILEOS	VOS_NT_WINDOWS32
+  FILETYPE	VFT_APP
+  FILESUBTYPE	VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    //language ID = U.S. English, charset = Windows, Multilingual
+    BEGIN
+      VALUE "Comments",		"Modbus data fetcher\0"
+      VALUE "CompanyName",	"ILIT.RU\0"
+      VALUE "FileDescription",	"Modbus data fetcher\0"
+      VALUE "FileVersion",	"0.0.1\0"
+      VALUE "LegalCopyright",	"Copyright (c) 20018-2019 Yaroslav Shkliar, ILIT.RU\0"
+      VALUE "OriginalFilename",	"Modbus data fetcher.exe\0"
+      VALUE "ProductName",	"Modbus data fetcher\0"
+      VALUE "ProductVersion",	"0.0.1\0"
+    END
+  END
+END
