@@ -60,7 +60,6 @@ FORMS += forms/mainwindow.ui \
     forms/ipaddressctrl.ui \
     forms/dbform.ui \
     forms/connectdialog.ui \
-    forms/dbform.ui \
     forms/connectdialog.ui
 
 RESOURCES += data/qmodbus.qrc

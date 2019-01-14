@@ -17,7 +17,8 @@ public:
     ~dbForm();
 
 signals:
-    void on_msg_err  ( const QString& );
+    void on_msg_err  ( const QString &msg);
+    void on_conn_send_main(QSqlDatabase *conn);
 
 private slots:
     void onConnectDB(void);

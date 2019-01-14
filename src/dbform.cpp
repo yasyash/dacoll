@@ -76,7 +76,7 @@ void dbForm::onConnectDB(void)
         ui->tableView->setEditTriggers(QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed);
         connect(ui->applyButton, SIGNAL( clicked()),model, SLOT( submitAll() ));
 
-
+        emit(on_conn_send_main(&conn));
         qCDebug(QT_QM_ASCII_DB) <<"con =" << status << " query = " << rec.count();
     } else {
 

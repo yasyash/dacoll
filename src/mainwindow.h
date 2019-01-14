@@ -27,6 +27,8 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QMap>
+#include <QSqlDatabase>
 
 #include "modbus.h"
 #include "ui_about.h"
@@ -40,7 +42,7 @@ public:
     {
         setupUi( this );
         aboutTextLabel->setText(
-            aboutTextLabel->text().arg( "0.0.1" ) );
+                    aboutTextLabel->text().arg( "0.0.1" ) );
     }
 } ;
 
@@ -48,7 +50,7 @@ public:
 
 namespace Ui
 {
-    class MainWindowClass;
+class MainWindowClass;
 }
 
 class MainWindow : public QMainWindow
@@ -59,19 +61,19 @@ public:
     ~MainWindow();
 
     void busMonitorAddItem( bool isRequest,
-                uint8_t slave,
-                uint8_t func,
-                uint16_t addr,
-                uint16_t nb,
-                uint16_t expectedCRC,
-                uint16_t actualCRC );
+                            uint8_t slave,
+                            uint8_t func,
+                            uint16_t addr,
+                            uint16_t nb,
+                            uint16_t expectedCRC,
+                            uint16_t actualCRC );
     void busMonitorRawData( uint8_t * data, uint8_t dataLen, bool addNewline );
 
     static void stBusMonitorAddItem( modbus_t * modbus,
-            uint8_t isOut, uint8_t slave, uint8_t func, uint16_t addr,
-            uint16_t nb, uint16_t expectedCRC, uint16_t actualCRC );
+                                     uint8_t isOut, uint8_t slave, uint8_t func, uint16_t addr,
+                                     uint16_t nb, uint16_t expectedCRC, uint16_t actualCRC );
     static void stBusMonitorRawData( modbus_t * modbus, uint8_t * data,
-            uint8_t dataLen, uint8_t addNewline );
+                                     uint8_t dataLen, uint8_t addNewline );
 
 
 private slots:
@@ -79,7 +81,7 @@ private slots:
     void updateRequestPreview( void );
     void updateRegisterView( void );
     void enableHexView( void );
-    void sendModbusRequest( void );
+    void sendModbusRequest( void ); //update data view
     void onSendButtonPress( void );
     void pollForDataOnBus( void );
     void openBatchProcessor();
@@ -90,6 +92,8 @@ private slots:
     void resetStatus( void );
     void setStatusError(const QString &msg);
     void renovateSlaveID( void );
+    void startTransactTimer(QSqlDatabase *conn); //start by signal dbForm
+    void transactionDB   (void);   //transaction timer event
 
 private:
     void keyPressEvent(QKeyEvent* event);
@@ -101,10 +105,17 @@ private:
     QLabel * m_statusText;
     QTimer * m_pollTimer;
     QTimer * m_statusTimer;
-    QTimer * m_renovateTimer;
+    QTimer * m_renovateTimer; //timer for  renovate of all modbus slave id polling
+    QTimer * m_trunsactTimer; //timer for trunsaction
+    QMap<QString, int>   * m_data; //assosiative array of polling data
+    QMap<QString, int>   * m_measure; //assosiative array of measurement quantities
+    QMap<QString, QUuid>   * m_uuid; //assosiative array of sensors uuid
     bool m_tcpActive;
     bool m_poll;
     uint8_t * q_poll;
+    QSqlDatabase *m_conn;
+    QUuid *m_uuidStation;
+
 };
 
 #endif // MAINWINDOW_H

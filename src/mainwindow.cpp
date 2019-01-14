@@ -42,56 +42,59 @@ extern MainWindow * globalMainWin;
 
 
 MainWindow::MainWindow( QWidget * _parent ) :
-	QMainWindow( _parent ),
-	ui( new Ui::MainWindowClass ),
-	m_modbus( NULL ),
-	m_tcpActive(false),
-	m_poll(false)
+    QMainWindow( _parent ),
+    ui( new Ui::MainWindowClass ),
+    m_modbus( NULL ),
+    m_tcpActive(false),
+    m_poll(false)
 {
-	ui->setupUi(this);
+    ui->setupUi(this);
 
-	connect( ui->rtuSettingsWidget,   SIGNAL(serialPortActive(bool)), this, SLOT(onRtuPortActive(bool)));
-	connect( ui->asciiSettingsWidget, SIGNAL(serialPortActive(bool)), this, SLOT(onAsciiPortActive(bool)));
-	connect( ui->tcpSettingsWidget,   SIGNAL(tcpPortActive(bool)),    this, SLOT(onTcpPortActive(bool)));
+    connect( ui->rtuSettingsWidget,   SIGNAL(serialPortActive(bool)), this, SLOT(onRtuPortActive(bool)));
+    connect( ui->asciiSettingsWidget, SIGNAL(serialPortActive(bool)), this, SLOT(onAsciiPortActive(bool)));
+    connect( ui->tcpSettingsWidget,   SIGNAL(tcpPortActive(bool)),    this, SLOT(onTcpPortActive(bool)));
 
-	connect( ui->rtuSettingsWidget,   SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
-	connect( ui->asciiSettingsWidget, SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
-	connect( ui->tcpSettingsWidget,   SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
+    connect( ui->rtuSettingsWidget,   SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
+    connect( ui->asciiSettingsWidget, SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
+    connect( ui->tcpSettingsWidget,   SIGNAL(connectionError(const QString&)), this, SLOT(setStatusError(const QString&)));
 
-//	connect( ui->slaveID, SIGNAL( valueChanged( int ) ),
-//			this, SLOT( updateRequestPreview() ) );
-	connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
-			this, SLOT( updateRequestPreview() ) );
-	connect( ui->startAddr, SIGNAL( valueChanged( int ) ),
-			this, SLOT( updateRequestPreview() ) );
-	connect( ui->numCoils, SIGNAL( valueChanged( int ) ),
-			this, SLOT( updateRequestPreview() ) );
+    //	connect( ui->slaveID, SIGNAL( valueChanged( int ) ),
+    //			this, SLOT( updateRequestPreview() ) );
+    connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
+             this, SLOT( updateRequestPreview() ) );
+    connect( ui->startAddr, SIGNAL( valueChanged( int ) ),
+             this, SLOT( updateRequestPreview() ) );
+    connect( ui->numCoils, SIGNAL( valueChanged( int ) ),
+             this, SLOT( updateRequestPreview() ) );
 
-	connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
-			this, SLOT( updateRegisterView() ) );
-	connect( ui->numCoils, SIGNAL( valueChanged( int ) ),
-			this, SLOT( updateRegisterView() ) );
-	connect( ui->startAddr, SIGNAL( valueChanged( int ) ),
-			this, SLOT( updateRegisterView() ) );
+    connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
+             this, SLOT( updateRegisterView() ) );
+    connect( ui->numCoils, SIGNAL( valueChanged( int ) ),
+             this, SLOT( updateRegisterView() ) );
+    connect( ui->startAddr, SIGNAL( valueChanged( int ) ),
+             this, SLOT( updateRegisterView() ) );
 
     connect( ui->sendBtn, SIGNAL( clicked() ),
-            this, SLOT( onSendButtonPress() ) );
+             this, SLOT( onSendButtonPress() ) );
 
     connect( ui->clearBusMonTable, SIGNAL( clicked() ),
-			this, SLOT( clearBusMonTable() ) );
+             this, SLOT( clearBusMonTable() ) );
 
     connect( ui->actionAbout_MDF, SIGNAL( triggered() ),
-            this, SLOT( aboutMDF() ) );
+             this, SLOT( aboutMDF() ) );
 
-	connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
-		this, SLOT( enableHexView() ) );
+    connect( ui->functionCode, SIGNAL( currentIndexChanged( int ) ),
+             this, SLOT( enableHexView() ) );
 
-    connect( ui->dbFormWidget, SIGNAL( on_msg_err  ( const QString& ) ),
-        this, SLOT( setStatusError(const QString&) ) );
+    connect( ui->dbFormWidget, SIGNAL( on_msg_err( const QString & ) ),
+             this, SLOT( setStatusError(const QString &) ) );
 
-	updateRegisterView();
-	updateRequestPreview();
-	enableHexView();
+    connect( ui->dbFormWidget,   SIGNAL( on_conn_send_main( QSqlDatabase *) ),
+             this, SLOT(startTransactTimer(QSqlDatabase *)));
+
+    updateRegisterView();
+    updateRequestPreview();
+    enableHexView();
 
     ui->regTable->setColumnWidth( 0, 160 );
     ui->regTable->setColumnWidth( 1, 80 );
@@ -99,156 +102,166 @@ MainWindow::MainWindow( QWidget * _parent ) :
     ui->regTable->setColumnWidth( 3, 160 );
     ui->regTable->setColumnWidth( 4, 160 );
 
-	m_statusInd = new QWidget;
-	m_statusInd->setFixedSize( 16, 16 );
-	m_statusText = new QLabel;
-	ui->statusBar->addWidget( m_statusInd );
-	ui->statusBar->addWidget( m_statusText, 10 );
-	resetStatus();
+    m_statusInd = new QWidget;
+    m_statusInd->setFixedSize( 16, 16 );
+    m_statusText = new QLabel;
+    ui->statusBar->addWidget( m_statusInd );
+    ui->statusBar->addWidget( m_statusText, 10 );
+    resetStatus();
 
-	QTimer * t = new QTimer( this );
-	connect( t, SIGNAL(timeout()), this, SLOT(pollForDataOnBus()));
-	t->start( 5 );
+    QTimer * t = new QTimer( this );
+    connect( t, SIGNAL(timeout()), this, SLOT(pollForDataOnBus()));
+    t->start( 5 );
 
-	m_pollTimer = new QTimer( this );
-	connect( m_pollTimer, SIGNAL(timeout()), this, SLOT(sendModbusRequest()));
+    m_pollTimer = new QTimer( this );
+    connect( m_pollTimer, SIGNAL(timeout()), this, SLOT(sendModbusRequest()));
 
-	m_statusTimer = new QTimer( this );
-	connect( m_statusTimer, SIGNAL(timeout()), this, SLOT(resetStatus()));
-	m_statusTimer->setSingleShot(true);
+    m_statusTimer = new QTimer( this );
+    connect( m_statusTimer, SIGNAL(timeout()), this, SLOT(resetStatus()));
+    m_statusTimer->setSingleShot(true);
 
     m_renovateTimer = new QTimer(this);
     connect( m_renovateTimer, SIGNAL(timeout()), this, SLOT(renovateSlaveID()));
     m_renovateTimer->start(600000); // every 10 minutes we set all slave ID to active mode for polling despite of really state
 
+    m_trunsactTimer = new QTimer(this);
+    connect( m_trunsactTimer, SIGNAL(timeout()), this, SLOT(transactionDB()));
+    // m_trunsactTimer->start(600000);
+
     q_poll = new uint8_t[15];
     memset(q_poll, 16, 16);
+    m_uuid = new  QMap<QString, QUuid>;
+    m_data = new  QMap<QString, int>;
+    m_measure =  new QMap<QString, int>;
+
 }
 
 
 MainWindow::~MainWindow()
 {
-	delete ui;
+    delete ui;
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event)
 {
     if( event->key() == Qt::Key_Control )
-	{
-		//set flag to request polling
-		if( m_modbus != NULL )
-			m_poll = true;
+    {
+        //set flag to request polling
+        if( m_modbus != NULL )
+            m_poll = true;
 
-		if( ! m_pollTimer->isActive() )
-			ui->sendBtn->setText( tr("Poll") );
-	}
+        if( ! m_pollTimer->isActive() )
+            ui->sendBtn->setText( tr("Poll") );
+    }
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent* event)
 {
-	if( event->key() == Qt::Key_Control )
-	{
-		m_poll = false;
+    if( event->key() == Qt::Key_Control )
+    {
+        m_poll = false;
 
-		if( ! m_pollTimer->isActive() )
-			ui->sendBtn->setText( tr("Send") );
-	}
+        if( ! m_pollTimer->isActive() )
+            ui->sendBtn->setText( tr("Send") );
+    }
 }
 
 void MainWindow::onSendButtonPress( void )
 {
-	//if already polling then stop
-	if( m_pollTimer->isActive() )
-	{
-		m_pollTimer->stop();
-		ui->sendBtn->setText( tr("Send") );
+    //if already polling then stop
+    if( m_pollTimer->isActive() )
+    {
+        m_pollTimer->stop();
+        m_trunsactTimer->stop();
+        ui->sendBtn->setText( tr("Send") );
 
     }
     else
     {
-		//if polling requested then enable timer
+        //if polling requested then enable timer
         if( m_poll )
-		{
+        {
             m_pollTimer->start( 1000 * ui->pollingInterval->value() );
+            m_trunsactTimer->start();
             qCDebug(QT_QM_ASCII_OPTEC_MAIN) <<   ui->pollingInterval->value() << " interval";
 
-			ui->sendBtn->setText( tr("Stop") );
-		}
+            ui->sendBtn->setText( tr("Stop") );
+        }
 
-		sendModbusRequest();
-	}
+        sendModbusRequest();
+    }
 }
 
 void MainWindow::busMonitorAddItem( bool isRequest,
-					uint8_t slave,
-					uint8_t func,
-					uint16_t addr,
-					uint16_t nb,
-					uint16_t expectedCRC,
-					uint16_t actualCRC )
+                                    uint8_t slave,
+                                    uint8_t func,
+                                    uint16_t addr,
+                                    uint16_t nb,
+                                    uint16_t expectedCRC,
+                                    uint16_t actualCRC )
 {
-	QTableWidget * bm = ui->busMonTable;
-	const int rowCount = bm->rowCount();
-	bm->setRowCount( rowCount+1 );
+    QTableWidget * bm = ui->busMonTable;
+    const int rowCount = bm->rowCount();
+    bm->setRowCount( rowCount+1 );
 
-	QTableWidgetItem * ioItem = new QTableWidgetItem( isRequest ? tr( "Req >>" ) : tr( "<< Resp" ) );
-	QTableWidgetItem * slaveItem = new QTableWidgetItem( QString::number( slave ) );
-	QTableWidgetItem * funcItem = new QTableWidgetItem( QString::number( func ) );
-	QTableWidgetItem * addrItem = new QTableWidgetItem( QString::number( addr ) );
-	QTableWidgetItem * numItem = new QTableWidgetItem( QString::number( nb ) );
-	QTableWidgetItem * crcItem = new QTableWidgetItem;
-	if( func > 127 )
-	{
-		addrItem->setText( QString() );
-		numItem->setText( QString() );
-		funcItem->setText( tr( "Exception (%1)" ).arg( func-128 ) );
-		funcItem->setForeground( Qt::red );
-	}
-	else
-	{
-		if( expectedCRC == actualCRC )
-		{
-			crcItem->setText( QString().sprintf( "%.4x", actualCRC ) );
-		}
-		else
-		{
-			crcItem->setText( QString().sprintf( "%.4x (%.4x)", actualCRC, expectedCRC ) );
-			crcItem->setForeground( Qt::red );
-		}
-	}
-	ioItem->setFlags( ioItem->flags() & ~Qt::ItemIsEditable );
-	slaveItem->setFlags( slaveItem->flags() & ~Qt::ItemIsEditable );
-	funcItem->setFlags( funcItem->flags() & ~Qt::ItemIsEditable );
-	addrItem->setFlags( addrItem->flags() & ~Qt::ItemIsEditable );
-	numItem->setFlags( numItem->flags() & ~Qt::ItemIsEditable );
-	crcItem->setFlags( crcItem->flags() & ~Qt::ItemIsEditable );
-	bm->setItem( rowCount, 0, ioItem );
-	bm->setItem( rowCount, 1, slaveItem );
-	bm->setItem( rowCount, 2, funcItem );
-	bm->setItem( rowCount, 3, addrItem );
-	bm->setItem( rowCount, 4, numItem );
-	bm->setItem( rowCount, 5, crcItem );
-	bm->verticalScrollBar()->setValue( 100000 );
+    QTableWidgetItem * ioItem = new QTableWidgetItem( isRequest ? tr( "Req >>" ) : tr( "<< Resp" ) );
+    QTableWidgetItem * slaveItem = new QTableWidgetItem( QString::number( slave ) );
+    QTableWidgetItem * funcItem = new QTableWidgetItem( QString::number( func ) );
+    QTableWidgetItem * addrItem = new QTableWidgetItem( QString::number( addr ) );
+    QTableWidgetItem * numItem = new QTableWidgetItem( QString::number( nb ) );
+    QTableWidgetItem * crcItem = new QTableWidgetItem;
+    if( func > 127 )
+    {
+        addrItem->setText( QString() );
+        numItem->setText( QString() );
+        funcItem->setText( tr( "Exception (%1)" ).arg( func-128 ) );
+        funcItem->setForeground( Qt::red );
+    }
+    else
+    {
+        if( expectedCRC == actualCRC )
+        {
+            crcItem->setText( QString().sprintf( "%.4x", actualCRC ) );
+        }
+        else
+        {
+            crcItem->setText( QString().sprintf( "%.4x (%.4x)", actualCRC, expectedCRC ) );
+            crcItem->setForeground( Qt::red );
+        }
+    }
+    ioItem->setFlags( ioItem->flags() & ~Qt::ItemIsEditable );
+    slaveItem->setFlags( slaveItem->flags() & ~Qt::ItemIsEditable );
+    funcItem->setFlags( funcItem->flags() & ~Qt::ItemIsEditable );
+    addrItem->setFlags( addrItem->flags() & ~Qt::ItemIsEditable );
+    numItem->setFlags( numItem->flags() & ~Qt::ItemIsEditable );
+    crcItem->setFlags( crcItem->flags() & ~Qt::ItemIsEditable );
+    bm->setItem( rowCount, 0, ioItem );
+    bm->setItem( rowCount, 1, slaveItem );
+    bm->setItem( rowCount, 2, funcItem );
+    bm->setItem( rowCount, 3, addrItem );
+    bm->setItem( rowCount, 4, numItem );
+    bm->setItem( rowCount, 5, crcItem );
+    bm->verticalScrollBar()->setValue( 100000 );
 }
 
 
 void MainWindow::busMonitorRawData( uint8_t * data, uint8_t dataLen, bool addNewline )
 {
-	if( dataLen > 0 )
-	{
-		QString dump = ui->rawData->toPlainText();
-		for( int i = 0; i < dataLen; ++i )
-		{
-			dump += QString().sprintf( "%.2x ", data[i] );
-		}
-		if( addNewline )
-		{
-			dump += "\n";
-		}
-		ui->rawData->setPlainText( dump );
-		ui->rawData->verticalScrollBar()->setValue( 100000 );
-		ui->rawData->setLineWrapMode( QPlainTextEdit::NoWrap );
-	}
+    if( dataLen > 0 )
+    {
+        QString dump = ui->rawData->toPlainText();
+        for( int i = 0; i < dataLen; ++i )
+        {
+            dump += QString().sprintf( "%.2x ", data[i] );
+        }
+        if( addNewline )
+        {
+            dump += "\n";
+        }
+        ui->rawData->setPlainText( dump );
+        ui->rawData->verticalScrollBar()->setValue( 100000 );
+        ui->rawData->setLineWrapMode( QPlainTextEdit::NoWrap );
+    }
 }
 
 // static
@@ -267,73 +280,73 @@ void MainWindow::stBusMonitorRawData( modbus_t * modbus, uint8_t * data, uint8_t
 
 static QString descriptiveDataTypeName( int funcCode )
 {
-	switch( funcCode )
-	{
-		case MODBUS_FC_READ_COILS:
-		case MODBUS_FC_WRITE_SINGLE_COIL:
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:
-			return "Coil (binary)";
-		case MODBUS_FC_READ_DISCRETE_INPUTS:
-			return "Discrete Input (binary)";
-		case MODBUS_FC_READ_HOLDING_REGISTERS:
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-			return "Holding Register (16 bit)";
-		case MODBUS_FC_READ_INPUT_REGISTERS:
-			return "Input Register (16 bit)";
-		default:
-			break;
-	}
-	return "Unknown";
+    switch( funcCode )
+    {
+    case MODBUS_FC_READ_COILS:
+    case MODBUS_FC_WRITE_SINGLE_COIL:
+    case MODBUS_FC_WRITE_MULTIPLE_COILS:
+        return "Coil (binary)";
+    case MODBUS_FC_READ_DISCRETE_INPUTS:
+        return "Discrete Input (binary)";
+    case MODBUS_FC_READ_HOLDING_REGISTERS:
+    case MODBUS_FC_WRITE_SINGLE_REGISTER:
+    case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+        return "Holding Register (16 bit)";
+    case MODBUS_FC_READ_INPUT_REGISTERS:
+        return "Input Register (16 bit)";
+    default:
+        break;
+    }
+    return "Unknown";
 }
 
 
 static inline QString embracedString( const QString & s )
 {
-	return s.section( '(', 1 ).section( ')', 0, 0 );
+    return s.section( '(', 1 ).section( ')', 0, 0 );
 }
 
 
 static inline int stringToHex( QString s )
 {
-	return s.replace( "0x", "" ).toInt( NULL, 16 );
+    return s.replace( "0x", "" ).toInt( NULL, 16 );
 }
 
 
 void MainWindow::clearBusMonTable( void )
 {
-	ui->busMonTable->setRowCount( 0 );
+    ui->busMonTable->setRowCount( 0 );
 }
 
 
 void MainWindow::updateRequestPreview( void )
 {
-   // QString slave = ui->slaveID->item(i)->text();
+    // QString slave = ui->slaveID->item(i)->text();
     const int func = stringToHex( embracedString(
-						ui->functionCode->
-							currentText() ) );
-	const int addr = ui->startAddr->value();
-	const int num = ui->numCoils->value();
-	if( func == MODBUS_FC_WRITE_SINGLE_COIL || func == MODBUS_FC_WRITE_SINGLE_REGISTER )
-	{
-		ui->requestPreview->setText(
-            QString().sprintf( "%s  %.2x  %.2x %.2x ",
-                    "addr",
-					func,
-					addr >> 8,
-					addr & 0xff ) );
-	}
-	else
-	{
-		ui->requestPreview->setText(
-            QString().sprintf( "%s  %.2x  %.2x %.2x  %.2x %.2x",
-                     "addr",
-					func,
-					addr >> 8,
-					addr & 0xff,
-					num >> 8,
-					num & 0xff ) );
-	}
+                                      ui->functionCode->
+                                      currentText() ) );
+    const int addr = ui->startAddr->value();
+    const int num = ui->numCoils->value();
+    if( func == MODBUS_FC_WRITE_SINGLE_COIL || func == MODBUS_FC_WRITE_SINGLE_REGISTER )
+    {
+        ui->requestPreview->setText(
+                    QString().sprintf( "%s  %.2x  %.2x %.2x ",
+                                       "addr",
+                                       func,
+                                       addr >> 8,
+                                       addr & 0xff ) );
+    }
+    else
+    {
+        ui->requestPreview->setText(
+                    QString().sprintf( "%s  %.2x  %.2x %.2x  %.2x %.2x",
+                                       "addr",
+                                       func,
+                                       addr >> 8,
+                                       addr & 0xff,
+                                       num >> 8,
+                                       num & 0xff ) );
+    }
 }
 
 
@@ -341,71 +354,75 @@ void MainWindow::updateRequestPreview( void )
 
 void MainWindow::updateRegisterView( void )
 {
-	const int func = stringToHex( embracedString(
-					ui->functionCode->currentText() ) );
-	const QString dataType = descriptiveDataTypeName( func );
-	const int addr = ui->startAddr->value();
+    const int func = stringToHex( embracedString(
+                                      ui->functionCode->currentText() ) );
+    const QString dataType = descriptiveDataTypeName( func );
+    const int addr = ui->startAddr->value();
 
-	int rowCount = 0;
-	switch( func )
-	{
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:
-		case MODBUS_FC_WRITE_SINGLE_COIL:
-			ui->numCoils->setEnabled( false );
-			rowCount = 1;
-			break;
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-			rowCount = ui->numCoils->value();
-		default:
-			ui->numCoils->setEnabled( true );
-			break;
-	}
+    int rowCount = 0;
+    switch( func )
+    {
+    case MODBUS_FC_WRITE_SINGLE_REGISTER:
+    case MODBUS_FC_WRITE_SINGLE_COIL:
+        ui->numCoils->setEnabled( false );
+        rowCount = 1;
+        break;
+    case MODBUS_FC_WRITE_MULTIPLE_COILS:
+    case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+        rowCount = ui->numCoils->value();
+    default:
+        ui->numCoils->setEnabled( true );
+        break;
+    }
 
-	ui->regTable->setRowCount( rowCount );
-	for( int i = 0; i < rowCount; ++i )
-	{
-		QTableWidgetItem * dtItem = new QTableWidgetItem( dataType );
-		QTableWidgetItem * addrItem =
-			new QTableWidgetItem( QString::number( addr+i ) );
-		QTableWidgetItem * dataItem =
-			new QTableWidgetItem( QString::number( 0 ) );
-		dtItem->setFlags( dtItem->flags() & ~Qt::ItemIsEditable	);
-		addrItem->setFlags( addrItem->flags() & ~Qt::ItemIsEditable );
-		ui->regTable->setItem( i, DataTypeColumn, dtItem );
-		ui->regTable->setItem( i, AddrColumn, addrItem );
-		ui->regTable->setItem( i, DataColumn, dataItem );
-	}
+    ui->regTable->setRowCount( rowCount );
+    for( int i = 0; i < rowCount; ++i )
+    {
+        QTableWidgetItem * dtItem = new QTableWidgetItem( dataType );
+        QTableWidgetItem * addrItem =
+                new QTableWidgetItem( QString::number( addr+i ) );
+        QTableWidgetItem * dataItem =
+                new QTableWidgetItem( QString::number( 0 ) );
+        dtItem->setFlags( dtItem->flags() & ~Qt::ItemIsEditable	);
+        addrItem->setFlags( addrItem->flags() & ~Qt::ItemIsEditable );
+        ui->regTable->setItem( i, DataTypeColumn, dtItem );
+        ui->regTable->setItem( i, AddrColumn, addrItem );
+        ui->regTable->setItem( i, DataColumn, dataItem );
+    }
 
-	ui->regTable->setColumnWidth( 0, 150 );
+    ui->regTable->setColumnWidth( 0, 150 );
 }
 
 
 void MainWindow::enableHexView( void )
 {
-	const int func = stringToHex( embracedString(
-					ui->functionCode->currentText() ) );
+    const int func = stringToHex( embracedString(
+                                      ui->functionCode->currentText() ) );
 
-	bool b_enabled =
-		func == MODBUS_FC_READ_HOLDING_REGISTERS ||
-		func == MODBUS_FC_READ_INPUT_REGISTERS;
+    bool b_enabled =
+            func == MODBUS_FC_READ_HOLDING_REGISTERS ||
+            func == MODBUS_FC_READ_INPUT_REGISTERS;
 
-	ui->checkBoxHexData->setEnabled( b_enabled );
+    ui->checkBoxHexData->setEnabled( b_enabled );
 }
 
 
 void MainWindow::sendModbusRequest( void )
 {
-	if( m_tcpActive )
-		ui->tcpSettingsWidget->tcpConnect();
+    QString tmp_type_measure;
 
-	if( m_modbus == NULL )
-	{
-		setStatusError( tr("Not configured!") );
-		return;
-	}
+    if( m_tcpActive )
+        ui->tcpSettingsWidget->tcpConnect();
+
+    if( m_modbus == NULL )
+    {
+        setStatusError( tr("Not configured!") );
+        return;
+    }
     for( int j = 0; j < ui->slaveID->count(); ++j )
     {
+        tmp_type_measure.clear(); //It's reset when new Slave ID is viewed
+
         if (ui->slaveID->item(j)->checkState())
         {
             QString slave = ui->slaveID->item(j)->text();
@@ -548,12 +565,13 @@ void MainWindow::sendModbusRequest( void )
                             {md = (_mode ?  "off" :  "measuring");};
 
                             uint8_t _type = (data >> 8) & 0xF;
-                            if (_type == 2) name = "CO";
+
+                            if (_type == 2) name = "CO"; //detect tipe of sensor
+
+                            tmp_type_measure = name;
 
                             uint8_t _number = (data >> 12) & 0xF;
                             QTextStream(&result) << name << " : " << md << " : " << _number;
-
-                            // qs_num.sprintf( "%s : %s : %s", _type,  tmp, (char*) _number);
 
                             ui->regTable->setItem( i, 3, new QTableWidgetItem("Type : Mode : Sensor №") );
                             ui->regTable->setItem( i, 4, new QTableWidgetItem(result));
@@ -562,9 +580,25 @@ void MainWindow::sendModbusRequest( void )
                         }
                         case 2:{
                             QString result;
+                            int tmp, cnt;
+
                             QTextStream(&result) << float (data)/10 << " mg/m3";
                             ui->regTable->setItem( i, 3, new QTableWidgetItem("Consentration") );
                             ui->regTable->setItem( i, 4, new QTableWidgetItem(result) );
+
+                            tmp = m_data->value(tmp_type_measure, -1); //detect first measure
+                            if ( tmp == -1){
+                                m_data->insert(tmp_type_measure, data);// insert into QMap ordering pair of measure first time
+                                m_measure->insert(tmp_type_measure, 1);
+                                qCDebug(QT_QM_ASCII_OPTEC_MAIN) << "measure...";
+
+                            } else {
+                                m_data->insert(tmp_type_measure, tmp + data );
+                                cnt = m_measure->value(tmp_type_measure, 0);
+                                m_measure->insert(tmp_type_measure, cnt+1);
+                                qCDebug(QT_QM_ASCII_OPTEC_MAIN) << "measure...";
+
+                            }
                         }
                             break;
                         default:
@@ -580,11 +614,11 @@ void MainWindow::sendModbusRequest( void )
                 if( ret < 0 )
                 {
                     if(
-                        #ifdef WIN32
+        #ifdef WIN32
                             errno == WSAETIMEDOUT ||
-                        #endif
+        #endif
                             errno == EIO
-                       )
+                            )
                     {
                         err += tr( "I/O error" );
                         err += ": ";
@@ -628,43 +662,43 @@ void MainWindow::sendModbusRequest( void )
 
 void MainWindow::resetStatus( void )
 {
-	m_statusText->setText( tr( "Ready" ) );
-	m_statusInd->setStyleSheet( "background: #aaa;" );
+    m_statusText->setText( tr( "Ready" ) );
+    m_statusInd->setStyleSheet( "background: #aaa;" );
 }
 
 void MainWindow::pollForDataOnBus( void )
 {
-	if( m_modbus )
-	{
-		modbus_poll( m_modbus );
-	}
+    if( m_modbus )
+    {
+        modbus_poll( m_modbus );
+    }
 }
 
 
 void MainWindow::openBatchProcessor()
 {
-	BatchProcessor( this, m_modbus ).exec();
+    BatchProcessor( this, m_modbus ).exec();
 }
 
 
 void MainWindow::aboutMDF( void )
 {
-	AboutDialog( this ).exec();
+    AboutDialog( this ).exec();
 }
 
 void MainWindow::onRtuPortActive(bool active)
 {
-	if (active) {
-		m_modbus = ui->rtuSettingsWidget->modbus();
-		if (m_modbus) {
-			modbus_register_monitor_add_item_fnc(m_modbus, MainWindow::stBusMonitorAddItem);
-			modbus_register_monitor_raw_data_fnc(m_modbus, MainWindow::stBusMonitorRawData);
-		}
-		m_tcpActive = false;
-	}
-	else {
-		m_modbus = NULL;
-	}
+    if (active) {
+        m_modbus = ui->rtuSettingsWidget->modbus();
+        if (m_modbus) {
+            modbus_register_monitor_add_item_fnc(m_modbus, MainWindow::stBusMonitorAddItem);
+            modbus_register_monitor_raw_data_fnc(m_modbus, MainWindow::stBusMonitorRawData);
+        }
+        m_tcpActive = false;
+    }
+    else {
+        m_modbus = NULL;
+    }
 }
 
 void MainWindow::onAsciiPortActive(bool active)
@@ -684,18 +718,18 @@ void MainWindow::onAsciiPortActive(bool active)
 
 void MainWindow::onTcpPortActive(bool active)
 {
-	m_tcpActive = active;
+    m_tcpActive = active;
 
-	if (active) {
-		m_modbus = ui->tcpSettingsWidget->modbus();
-		if (m_modbus) {
-			modbus_register_monitor_add_item_fnc(m_modbus, MainWindow::stBusMonitorAddItem);
-			modbus_register_monitor_raw_data_fnc(m_modbus, MainWindow::stBusMonitorRawData);
-		}
-	}
-	else {
-		m_modbus = NULL;
-	}
+    if (active) {
+        m_modbus = ui->tcpSettingsWidget->modbus();
+        if (m_modbus) {
+            modbus_register_monitor_add_item_fnc(m_modbus, MainWindow::stBusMonitorAddItem);
+            modbus_register_monitor_raw_data_fnc(m_modbus, MainWindow::stBusMonitorRawData);
+        }
+    }
+    else {
+        m_modbus = NULL;
+    }
 }
 
 void MainWindow::setStatusError(const QString &msg)
@@ -715,5 +749,69 @@ void MainWindow::renovateSlaveID( void )
         ui->slaveID->item(j)->setCheckState(Qt::Checked);
     }
     ui->slaveID->setEnabled(true);
+
+}
+
+void MainWindow::transactionDB(void)
+{
+    QMap<QString, QUuid>::iterator sensor;
+    for (sensor = m_uuid->begin(); sensor != m_uuid->end(); ++sensor)
+    {
+        int val = m_data->value(sensor.key(), -1);
+        if (val != -1){
+            QSqlQuery query = QSqlQuery(*m_conn);
+            query.prepare("INSERT INTO sensors_data (idd, serialnum, date_time, typemeasure, measure, is_alert) "
+                          "VALUES (:idd, :serialnum, :date_time, :typemeasure, :measure, false)");
+
+            float average = (float (val)) / m_measure->value(sensor.key(), 1) / 10;
+
+            query.bindValue(":idd", QString(m_uuidStation->toString()).remove(QRegExp("[\\{\\}]")));
+            query.bindValue(":serialnum",  QString(m_uuid->value(sensor.key()).toString()).remove(QRegExp("[\\{\\}]")));
+            query.bindValue(":date_time", QDateTime::currentDateTime().toString( "yyyy-MM-dd hh:mm:ss"));
+            query.bindValue(":typemeasure",sensor.key());
+            query.bindValue(":measure", average );
+            qCDebug(QT_QM_ASCII_OPTEC_MAIN) << "idd === "<< QString(m_uuidStation->toString()).remove(QRegExp("[\\{\\}]")) << "serial === " <<  QString(m_uuid->value(sensor.key()).toString()).remove(QRegExp("[\\{\\}]")) <<
+                                               ":date_time ===" << QDateTime::currentDateTime().toString( "yyyy-MM-ddThh:mm:ss") << ":typemeasure " <<  sensor.key() <<
+                                               "measure ===" <<average;
+            qCDebug(QT_QM_ASCII_OPTEC_MAIN) << m_conn->isOpen() << "Hurah! Transaction status is " << query.exec() << "error is ==== " << query.lastError();
+
+            query.finish();
+            //  query.~QSqlQuery();
+
+            m_data->remove(sensor.key());
+            m_measure->remove(sensor.key());
+
+
+        }
+    }
+
+
+}
+
+void MainWindow::startTransactTimer( QSqlDatabase *conn) //start by signal dbForm
+{
+
+
+    m_conn = conn;
+    QSqlQuery *query= new QSqlQuery ("select * from equipments where is_present = 'true' and measure_class = 'data' order by date_time_in", *conn);
+    qCDebug(QT_QM_ASCII_OPTEC_MAIN) << "query is " <<   query->isActive()<< " err is  " << query->lastError();
+    query->first();
+    QSqlRecord rec = query->record();
+
+    m_trunsactTimer->start(rec.field("average_period").value().toInt() *1000);
+    if( !m_pollTimer->isActive() ) m_trunsactTimer->stop();
+
+    m_uuidStation  = new QUuid(rec.field("idd").value().toUuid());
+
+
+    for (int i = 0; i < query->size(); i++ )
+    {
+        qCDebug(QT_QM_ASCII_OPTEC_MAIN) << query->value("typemeasure").toString() << "  -----  "<< query->value("serialnum").toUuid();
+
+        m_uuid->insert( query->value("typemeasure").toString(), query->value("serialnum").toUuid());
+        query->next();
+    }
+    query->finish();
+    query->~QSqlQuery();
 
 }
