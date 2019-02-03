@@ -20,7 +20,9 @@ SOURCES += src/main.cpp \
     src/ipaddressctrl.cpp \
     src/iplineedit.cpp \
     src/dbform.cpp \
-    src/connectdialog.cpp
+    src/connectdialog.cpp \
+    src/ups_status.cpp \
+    src/nutclient.cpp
 
 HEADERS += src/mainwindow.h \
     src/BatchProcessor.h \
@@ -33,7 +35,9 @@ HEADERS += src/mainwindow.h \
     src/ipaddressctrl.h \
     src/iplineedit.h \
     src/dbform.h \
-    src/connectdialog.h
+    src/connectdialog.h \
+    src/ups_status.h \
+    src/nutclient.h
 
 INCLUDEPATH += 3rdparty/libmodbus \
                3rdparty/libmodbus/src \
@@ -60,7 +64,7 @@ FORMS += forms/mainwindow.ui \
     forms/ipaddressctrl.ui \
     forms/dbform.ui \
     forms/connectdialog.ui \
-    forms/connectdialog.ui
+    forms/ups_status.ui
 
 RESOURCES += data/qmodbus.qrc
 

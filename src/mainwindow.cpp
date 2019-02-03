@@ -124,9 +124,9 @@ MainWindow::MainWindow( QWidget * _parent ) :
     connect( m_renovateTimer, SIGNAL(timeout()), this, SLOT(renovateSlaveID()));
     m_renovateTimer->start(600000); // every 10 minutes we set all slave ID to active mode for polling despite of really state
 
-    m_trunsactTimer = new QTimer(this);
-    connect( m_trunsactTimer, SIGNAL(timeout()), this, SLOT(transactionDB()));
-    // m_trunsactTimer->start(600000);
+    m_transactTimer = new QTimer(this);
+    connect( m_transactTimer, SIGNAL(timeout()), this, SLOT(transactionDB()));
+    // m_transactTimer->start(600000);
 
     q_poll = new uint8_t[15];
     memset(q_poll, 16, 16);
@@ -172,7 +172,7 @@ void MainWindow::onSendButtonPress( void )
     if( m_pollTimer->isActive() )
     {
         m_pollTimer->stop();
-        m_trunsactTimer->stop();
+        m_transactTimer->stop();
         ui->sendBtn->setText( tr("Send") );
 
     }
@@ -182,7 +182,7 @@ void MainWindow::onSendButtonPress( void )
         if( m_poll )
         {
             m_pollTimer->start( 1000 * ui->pollingInterval->value() );
-            m_trunsactTimer->start();
+            m_transactTimer->start();
             qCDebug(QT_QM_ASCII_OPTEC_MAIN) <<   ui->pollingInterval->value() << " interval";
 
             ui->sendBtn->setText( tr("Stop") );
@@ -798,8 +798,8 @@ void MainWindow::startTransactTimer( QSqlDatabase *conn) //start by signal dbFor
     query->first();
     QSqlRecord rec = query->record();
 
-    m_trunsactTimer->start(rec.field("average_period").value().toInt() *1000);
-    if( !m_pollTimer->isActive() ) m_trunsactTimer->stop();
+    m_transactTimer->start(rec.field("average_period").value().toInt() *1000);
+    if( !m_pollTimer->isActive() ) m_transactTimer->stop();
 
     m_uuidStation  = new QUuid(rec.field("idd").value().toUuid());
 
@@ -812,6 +812,6 @@ void MainWindow::startTransactTimer( QSqlDatabase *conn) //start by signal dbFor
         query->next();
     }
     query->finish();
-    query->~QSqlQuery();
+    //    query->~QSqlQuery();
 
 }

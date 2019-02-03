@@ -24,7 +24,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>4</number>
         </property>
         <widget class="QWidget" name="tab">
          <attribute name="title">
@@ -50,7 +50,7 @@
          <attribute name="title">
           <string>Modbus ASCII</string>
          </attribute>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <layout class="QHBoxLayout" name="horizontalLayout_21">
           <property name="sizeConstraint">
            <enum>QLayout::SetNoConstraint</enum>
           </property>
@@ -87,6 +87,34 @@
           </property>
           <item>
            <widget class="dbForm" name="dbFormWidget" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_5">
+         <attribute name="title">
+          <string>UPS Status</string>
+         </attribute>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="sizeConstraint">
+           <enum>QLayout::SetNoConstraint</enum>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="ups_status" name="ups_statusWidget" native="true"/>
           </item>
          </layout>
         </widget>
@@ -767,6 +795,11 @@
    <class>dbForm</class>
    <extends>QWidget</extends>
    <header>dbform.h</header>
+  </customwidget>
+ <customwidget>
+   <class>ups_status</class>
+   <extends>QWidget</extends>
+   <header>ups_status.h</header>
   </customwidget>
  </customwidgets>
  <resources>
